@@ -2,6 +2,8 @@
 
 static bool flip;
 
+using namespace std;
+
 Game::Game() : window(VideoMode(800, 600), "OpenGL Cube Vertex and Fragment Shaders")
 {
 }
@@ -53,6 +55,12 @@ GLuint	index, //Index to draw
 		positionID, //Position ID
 		colorID; // Color ID
 
+const char *filepath = "./shaders.txt";
+
+float angle = 0.5f;
+Matrix matrixRotation;
+Matrix matrixScale;
+
 
 void Game::initialize()
 {
@@ -60,8 +68,10 @@ void Game::initialize()
 	GLint isCompiled = 0;
 	GLint isLinked = 0;
 
-	glewInit();
+	matrixRotation = matrixRotation.rotation(angle);
+	matrixScale = matrixScale.scale(100.5f, 100.5f);
 
+	glewInit();
 
 	/* Vertices counter-clockwise winding */
 
@@ -109,7 +119,6 @@ void Game::initialize()
 	vertex[7].coordinate[1] = 0.5f;
 	vertex[7].coordinate[2] = -1.0f;
 
-
 	//DRAWING TRIAGNLES 
 
 	//FRONT
@@ -136,7 +145,7 @@ void Game::initialize()
 	triangles[24] = 1;   triangles[25] = 0;   triangles[26] = 4; // TRIANGLE 11
 	triangles[27] = 1;   triangles[28] = 4;   triangles[29] = 5; // TRIANGLE 12
 
-	//glEnable(GL_CULL_FACE); // To cull the faces
+	glEnable(GL_CULL_FACE); // To cull the faces
 
 	/* Create a new VBO using VBO id */
 	glGenBuffers(1, vbo);
@@ -154,14 +163,9 @@ void Game::initialize()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	/* Vertex Shader which would normally be loaded from an external file */
-	const char* vs_src = "#version 400\n\r"
-		"in vec4 sv_position;"
-		"in vec4 sv_color;"
-		"out vec4 color;"
-		"void main() {"
-		"	color = sv_color;"
-		"	gl_Position = sv_position;"
-		"}"; //Vertex Shader Src
+
+	string shader = readShader();
+	const char* vs_src = shader.c_str();
 
 	DEBUG_MSG("Setting Up Vertex Shader");
 
@@ -182,12 +186,9 @@ void Game::initialize()
 	}
 
 	/* Fragment Shader which would normally be loaded from an external file */
-	const char* fs_src = "#version 400\n\r"
-		"in vec4 color;"
-		"out vec4 fColor;"
-		"void main() {"
-		"	fColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);"
-		"}"; //Fragment Shader Src
+
+	string fragment = readFragment();
+	const char* fs_src = fragment.c_str();
 
 	DEBUG_MSG("Setting Up Fragment Shader");
 
@@ -261,15 +262,28 @@ void Game::update()
 		}
 	}
 
-	//Change vertex data
-	//for (int i = 0; i < 8; i++)
-	//{
-	//	for (int j = 0; j < 3; j++)
-	//	{
-	//		vertex[i].coordinate[j] += -0.0001f;
-	//	}
-	//}
+	if (sf::Keyboard::isKeyPressed(Keyboard::Space))
+	{
+		applyMatrix(matrixRotation);
+	}
+	if (sf::Keyboard::isKeyPressed(Keyboard::S))
+	{
+		applyMatrix(matrixScale);
+	}
+	if (sf::Keyboard::isKeyPressed(Keyboard::T))
+	{
+		translate();
+	}
 
+	//Change vertex data
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			vertex[i].coordinate[j] += -0.0001f;
+ 		}
+	}
+	                         
 #if (DEBUG >= 2)
 	DEBUG_MSG("Update up...");
 #endif
@@ -321,23 +335,63 @@ void Game::unload()
 	glDeleteBuffers(1, vbo);
 }
 
-string readFile(const char *filePath) {
-	std::string content;
-	std::ifstream fileStream(filePath, std::ios::in);
-
-	if (!fileStream.is_open()) {
-		std::cerr << "Could not read file " << filePath << ". File does not exist." << std::endl;
-		return "";
+string Game::readShader()
+{
+	string line;
+	ifstream myfile("../shaders.txt");
+	string shader;
+	if (myfile.is_open())
+	{
+		while (getline(myfile, line))
+		{
+			shader += line + '\n';
+		}
+		myfile.close();
 	}
 
-	std::string line = "";
-	while (!fileStream.eof()) {
-		std::getline(fileStream, line);
-		content.append(line + "\n");
-	}
+	else cout << "Unable to open file";
 
-	fileStream.close();
-	return content;
+	return shader;
 }
+string Game::readFragment()
+{
+	string line;
+	ifstream myfile("../fragment.txt");
+	string fragment;
+	if (myfile.is_open())
+	{
+		while (getline(myfile, line))
+		{
+			fragment += line + '\n';
+		}
+		myfile.close();
+	}
 
+	else cout << "Unable to open file";
 
+	return fragment;
+}
+void Game::translate()
+{
+	Matrix matrixTranslate = matrixTranslate.translate(0.005f, 0);
+	Vector vec[8];
+	for (int i = 0; i < 8; i++)
+	{
+		vec[i] = Vector(vertex[i].coordinate[0], vertex[i].coordinate[1], 1);
+		vec[i] = matrixTranslate * vec[i];
+		vertex[i].coordinate[0] = vec[i].x();
+		vertex[i].coordinate[1] = vec[i].y();
+	}
+}
+void Game::applyMatrix(Matrix matrix)
+{
+	Vector vec[8];
+	for (int i = 0; i < 8; i++)
+	{
+		vec[i] = Vector(vertex[i].coordinate[0], vertex[i].coordinate[1], vertex[i].coordinate[2]);
+		vec[i] = matrix * vec[i];
+		vertex[i].coordinate[0] = vec[i].x();
+		vertex[i].coordinate[1] = vec[i].y();
+		vertex[i].coordinate[2] = vec[i].z();
+	}
+}

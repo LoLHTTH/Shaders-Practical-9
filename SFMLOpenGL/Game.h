@@ -22,7 +22,8 @@ class Game
 public:
 	Game();
 	~Game();
-	string readFile(const char *filePath);
+	string readShader();
+	string readFragment();
 	void run();
 private:
 	Window window;
@@ -31,6 +32,8 @@ private:
 	void update();
 	void render();
 	void unload();
+	void translate();
+	void applyMatrix(Matrix matrix);
 
 	Clock clock;
 	Time elapsed;
